@@ -1,0 +1,60 @@
+plugins {
+    id 'com.android.application'
+    id 'org.jetbrains.kotlin.plugin.compose'
+}
+
+android {
+    namespace 'fr.kdns.weiyun.dormmonitor'
+    compileSdk 35
+    buildFeatures { compose true; buildConfig true }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
+    }
+
+    defaultConfig {
+        applicationId 'fr.kdns.weiyun.dormmonitor'
+        minSdk 26
+        targetSdk 35
+        versionCode 13
+        versionName '1.0.0'
+        testInstrumentationRunner 'fr.kdns.weiyun.dormmonitor.VisualVerification'
+    }
+
+    signingConfigs {
+        release {
+            def keyPath = System.getenv('DORM_RELEASE_KEYSTORE')
+            if (keyPath) {
+                storeFile file(keyPath)
+                storePassword System.getenv('DORM_RELEASE_STORE_PASSWORD')
+                keyAlias System.getenv('DORM_RELEASE_KEY_ALIAS')
+                keyPassword System.getenv('DORM_RELEASE_KEY_PASSWORD')
+            }
+        }
+    }
+
+    buildTypes {
+        release {
+            signingConfig signingConfigs.release
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+        }
+    }
+    testBuildType 'release'
+}
+
+dependencyLocking { lockAllConfigurations() }
+
+dependencies {
+    def composeBom = platform('androidx.compose:compose-bom:2025.08.00')
+    implementation composeBom
+    implementation 'androidx.activity:activity-compose:1.10.1'
+    implementation 'androidx.compose.material3:material3'
+    implementation 'top.yukonga.miuix.kmp:miuix:0.5.1'
+    implementation 'androidx.compose.material:material-icons-extended'
+    implementation 'androidx.compose.ui:ui-tooling-preview'
+    implementation 'androidx.lifecycle:lifecycle-viewmodel-compose:2.9.2'
+    implementation 'androidx.lifecycle:lifecycle-viewmodel-ktx:2.9.2'
+    testImplementation 'junit:junit:4.13.2'
+}

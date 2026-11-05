@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">电示</string>
+    <string name="widget_description">查看宿舍剩余电量</string>
+    <string name="widget_icon_description">电示</string>
+</resources>

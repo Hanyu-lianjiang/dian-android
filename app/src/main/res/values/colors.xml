@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="widget_background">#090A0B</color>
+    <color name="widget_panel">#17191B</color>
+    <color name="widget_border">#303236</color>
+    <color name="widget_text">#F2F3F4</color>
+    <color name="widget_muted">#83858A</color>
+    <color name="widget_blue">#8A9BFF</color>
+    <color name="widget_green">#36D35A</color>
+    <color name="widget_yellow">#F0AA27</color>
+    <color name="widget_orange">#FF8A21</color>
+    <color name="widget_red">#F05A5A</color>
+</resources>
