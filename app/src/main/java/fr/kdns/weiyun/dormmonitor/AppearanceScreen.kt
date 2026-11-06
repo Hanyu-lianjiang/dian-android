@@ -16,6 +16,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.*
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -29,7 +30,7 @@ import androidx.compose.ui.unit.dp
         AppCard(tonal = true) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 BrandMark(Modifier.size(48.dp)); Spacer(Modifier.width(16.dp))
-                Column { Text("电示", style = MaterialTheme.typography.headlineSmall); Text("主题预览", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+                Column { Text(stringResource(R.string.app_name), style = MaterialTheme.typography.headlineSmall); Text("主题预览", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
                 Spacer(Modifier.weight(1f)); Icon(Icons.Outlined.WbSunny, null, tint = MaterialTheme.colorScheme.primary)
             }
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {

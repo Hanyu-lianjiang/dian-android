@@ -18,9 +18,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.rememberGraphicsLayer
-import androidx.compose.foundation.border
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModelProvider
@@ -69,7 +68,7 @@ class MainActivity : ComponentActivity() {
         Row(Modifier.fillMaxWidth().statusBarsPadding().padding(horizontal = 20.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
             if (subPage) IconButton(onClick = ::back, enabled = !vm.busy || vm.page == "detail") { Icon(Icons.Outlined.ArrowBack, "返回") }
             else { BrandMark(Modifier.padding(end = 12.dp).size(30.dp)) }
-            Text(when (vm.page) { "register" -> "注册账号"; "appearance" -> "主题与外观"; "widget" -> "桌面小组件"; "threshold" -> "低电量提醒"; "authorization" -> "学校查询授权"; "detail" -> vm.selected?.optString("title") ?: "宿舍详情"; "about" -> "关于"; else -> "电示" }, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
+            Text(when (vm.page) { "register" -> "注册账号"; "appearance" -> "主题与外观"; "widget" -> "桌面小组件"; "threshold" -> "低电量提醒"; "authorization" -> "学校查询授权"; "detail" -> vm.selected?.optString("title") ?: "宿舍详情"; "about" -> "关于"; else -> stringResource(R.string.app_name) }, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
             if (vm.page != "appearance") IconButton(onClick = ::appearance) { Icon(Icons.Outlined.Palette, "主题与外观", tint = MaterialTheme.colorScheme.primary) }
         }
     }, bottomBar = {
@@ -77,7 +76,7 @@ class MainActivity : ComponentActivity() {
     }) { padding ->
         val underBar = loggedIn && !subPage && vm.page in listOf("home", "settings")
         val contentPadding = PaddingValues(top = padding.calculateTopPadding(), bottom = if (underBar) 0.dp else padding.calculateBottomPadding())
-        Box(Modifier.fillMaxSize().navigationBackdrop(backdrop, glass && loggedIn && !subPage)) {
+        Box(Modifier.fillMaxSize().navigationBackdrop(backdrop, glass && loggedIn && !subPage).background(MaterialTheme.colorScheme.background)) {
         Column(Modifier.fillMaxSize().padding(contentPadding).consumeWindowInsets(padding).imePadding().padding(horizontal = 24.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             if (vm.error.isNotEmpty()) Feedback(vm.error, true)
             if (vm.notice.isNotEmpty()) Feedback(vm.notice, false)
@@ -128,29 +127,42 @@ class MainActivity : ComponentActivity() {
         "settings" -> NavigationItem("设置", Icons.Outlined.Tune)
         else -> NavigationItem("宿舍", Icons.Outlined.Cottage)
     } }
-    Box(Modifier.fillMaxWidth().then(if (p.floating) Modifier.navigationBarsPadding() else Modifier).padding(horizontal = if (p.floating) 24.dp else 0.dp, vertical = if (p.floating) 12.dp else 0.dp)) {
-        GlassNavigationSurface(backdrop, p.glass, RoundedCornerShape(if (p.floating) 40.dp else 0.dp)) {
+    val onSelect: (Int) -> Unit = { index ->
+        if (!vm.busy) when (pages[index]) {
+            "home" -> { vm.clearError(); vm.page = "home" }
+            "catalog" -> if (vm.page != "catalog") vm.choose()
+            "settings" -> if (vm.page != "settings") vm.settings()
+        }
+    }
+    Box(Modifier.fillMaxWidth()
+        .then(if (p.floating) Modifier.navigationBarsPadding() else Modifier.background(MaterialTheme.colorScheme.surfaceContainer))
+        .padding(horizontal = if (p.floating) 24.dp else 0.dp, vertical = if (p.floating) 6.dp else 0.dp),
+        contentAlignment = Alignment.Center) {
+        if (p.glass) {
+            GlassNavigationBar(
+                layer = backdrop.layer, layerOrigin = backdrop.origin,
+                items = pages.map { when (it) {
+                    "catalog" -> GlassNavigationItem("添加", Icons.Outlined.AddCircleOutline)
+                    "settings" -> GlassNavigationItem("设置", Icons.Outlined.Tune)
+                    else -> GlassNavigationItem("宿舍", Icons.Outlined.Cottage)
+                } },
+                selected = selected, onSelect = onSelect,
+                modifier = Modifier.then(if (p.floating) Modifier else Modifier.navigationBarsPadding()),
+                enabled = !vm.busy, floating = p.floating
+            )
+        } else {
             val inset = if (p.floating) 6.dp else 4.dp
-            Box(Modifier.then(if (p.floating) Modifier else Modifier.navigationBarsPadding()).padding(horizontal = inset)) {
-                // Discrete layout positions avoid drag feedback or competing spring animations.
+            Box(Modifier.clip(RoundedCornerShape(if (p.floating) 40.dp else 0.dp))
+                .background(MaterialTheme.colorScheme.surfaceContainer)
+                .then(if (p.floating) Modifier else Modifier.navigationBarsPadding()).padding(horizontal = inset)) {
                 Row(Modifier.matchParentSize().padding(vertical = inset), verticalAlignment = Alignment.CenterVertically) {
                     pages.forEachIndexed { index, _ ->
-                        val active = index == selected
-                        val capsule = RoundedCornerShape(32.dp)
-                        Box(Modifier.weight(1f).fillMaxHeight().padding(2.dp).clip(capsule)
-                            .background(if (active && p.glass) Brush.verticalGradient(listOf(MaterialTheme.colorScheme.primaryContainer.copy(alpha = .8f), MaterialTheme.colorScheme.primaryContainer.copy(alpha = .44f)))
-                                else Brush.verticalGradient(List(2) { if (active) MaterialTheme.colorScheme.primaryContainer else Color.Transparent }))
-                            .then(if (active && p.glass) Modifier.border(.7.dp, Brush.verticalGradient(listOf(Color.White.copy(alpha = .4f), MaterialTheme.colorScheme.primary.copy(alpha = .08f))), capsule) else Modifier))
+                        Box(Modifier.weight(1f).fillMaxHeight().padding(2.dp).clip(RoundedCornerShape(32.dp))
+                            .background(if (index == selected) MaterialTheme.colorScheme.primaryContainer else Color.Transparent))
                     }
                 }
-                // The stock bar reserves extra space below its labels. Balance that space
-                // above the items while keeping the outer bar height and touch regions stable.
-                MiuixNavigationBar(items = items, selected = selected, modifier = Modifier.padding(top = inset * 2), color = Color.Transparent, showDivider = false, defaultWindowInsetsPadding = false,
-                    onClick = { index -> if (!vm.busy) when (pages[index]) {
-                        "home" -> { vm.clearError(); vm.page = "home" }
-                        "catalog" -> if (vm.page != "catalog") vm.choose()
-                        "settings" -> if (vm.page != "settings") vm.settings()
-                    } })
+                MiuixNavigationBar(items = items, selected = selected, modifier = Modifier.padding(top = inset * 2),
+                    color = Color.Transparent, showDivider = false, defaultWindowInsetsPadding = false, onClick = onSelect)
             }
         }
     }

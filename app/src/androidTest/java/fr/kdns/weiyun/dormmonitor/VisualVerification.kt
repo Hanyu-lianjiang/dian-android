@@ -8,6 +8,19 @@ import android.widget.RemoteViews
 import android.widget.FrameLayout
 import android.widget.TextView
 import androidx.activity.compose.setContent
+import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.*
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.*
+import androidx.compose.material3.Text
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.rememberGraphicsLayer
+import androidx.compose.ui.unit.dp
 import androidx.compose.runtime.SideEffect
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
@@ -101,7 +114,7 @@ class VisualVerification : Instrumentation() {
                     val contentColor = LocalContentColor.current
                     val expected = MaterialTheme.colorScheme.onSurface
                     SideEffect { check(contentColor == expected) { "Unstyled content text" } }
-                    MonitorScreen(vm)
+                    if (args.getString("page") == "glass") GlassNavigationFixture() else MonitorScreen(vm)
                 } }
             }
             waitForIdleSync()
@@ -165,6 +178,33 @@ private class FixtureApi(empty: Boolean, private val feedback: String, private v
         }
         path.startsWith("/api/dorms/") -> JSONObject().put("dorm", rooms.getJSONObject(0))
         else -> JSONObject().put("canImport", true).put("dorms", rooms)
+        }
+    }
+}
+
+
+/** Patterned, live scene exercises the actual navigation and shader without server data. */
+@androidx.compose.runtime.Composable
+private fun GlassNavigationFixture() {
+    var selected by remember { mutableIntStateOf(0) }
+    var commits by remember { mutableIntStateOf(0) }
+    val layer = rememberGraphicsLayer()
+    val backdrop = remember(layer) { NavigationBackdrop(layer) }
+    val p = LocalAppearance.current
+    val background = MaterialTheme.colorScheme.background
+    val labels = if (p.importTab) listOf("宿舍", "添加", "设置") else listOf("宿舍", "设置")
+    val icons = if (p.importTab) listOf(Icons.Outlined.Cottage, Icons.Outlined.AddCircleOutline, Icons.Outlined.Tune) else listOf(Icons.Outlined.Cottage, Icons.Outlined.Tune)
+    Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
+        Canvas(Modifier.fillMaxSize().navigationBackdrop(backdrop, true)) {
+            drawRect(background)
+            val band = 20.dp.toPx()
+            val colors = listOf(Color(0xFFE8B4BA), Color(0xFF8AB9CB), Color(0xFFADBB92), Color(0xFFDAB980))
+            for (i in 0..(size.width / band).toInt()) drawRect(colors[(i + selected) % colors.size], Offset(i * band, 0f), androidx.compose.ui.geometry.Size(band, size.height))
+            for (i in 0..(size.height / band).toInt()) drawLine(Color.Black.copy(alpha = .35f), Offset(0f, i * band), Offset(size.width, i * band), 1.5.dp.toPx())
+        }
+        Text("当前：${labels[selected]}；切换：$commits", Modifier.statusBarsPadding().padding(24.dp))
+        Box(Modifier.align(Alignment.BottomCenter).fillMaxWidth().navigationBarsPadding().padding(horizontal = 24.dp, vertical = 6.dp), contentAlignment = Alignment.Center) {
+            GlassNavigationBar(layer, backdrop.origin, labels.mapIndexed { i, text -> GlassNavigationItem(text, icons[i]) }, selected, { selected = it; commits++ })
         }
     }
 }
