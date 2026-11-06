@@ -19,12 +19,13 @@ class AppUpdatesTest {
 
     @Test fun restrictsUpdateLinksToThisRepository() {
         val root = "https://github.com/$UPDATE_REPOSITORY/releases/"
-        assertTrue(releaseUrlAllowed(root + "download/v2.3.0/dianshi-2.3.0.apk", true))
+        assertTrue(releaseUrlAllowed(root + "download/v2.3.0/dian-2.3.0.apk", true))
         assertTrue(releaseUrlAllowed(root + "tag/v2.3.0", false))
         listOf(
             "http://github.com/$UPDATE_REPOSITORY/releases/download/v3/app.apk",
             "https://github.com.evil.test/$UPDATE_REPOSITORY/releases/download/v3/app.apk",
             "https://github.com/other/repository/releases/download/v3/app.apk",
+            "https://github.com/Hanyu-lianjiang/dianshi-android/releases/download/v3/app.apk",
             root + "download/v3/file.exe", root + "download/../outside.apk",
             root + "download/v3/%2e%2e/outside.apk", "https://github.com@evil.test/$UPDATE_REPOSITORY/releases/download/v3/app.apk"
         ).forEach { assertFalse(it, releaseUrlAllowed(it, true)) }

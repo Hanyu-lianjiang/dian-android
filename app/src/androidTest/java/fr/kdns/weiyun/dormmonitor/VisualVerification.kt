@@ -43,7 +43,7 @@ class VisualVerification : Instrumentation() {
             val api = FixtureApi(args.getString("page") == "empty", args.getString("feedback", ""), args.getString("delay", "0").toLong())
             runOnMainSync {
                 val source = when (args.getString("update", "live")) {
-                    "new" -> UpdateSource { AppRelease("v99.0.0", "https://github.com/$UPDATE_REPOSITORY/releases/tag/v99.0.0", "https://github.com/$UPDATE_REPOSITORY/releases/download/v99.0.0/dianshi-99.0.0.apk") }
+                    "new" -> UpdateSource { AppRelease("v99.0.0", "https://github.com/$UPDATE_REPOSITORY/releases/tag/v99.0.0", "https://github.com/$UPDATE_REPOSITORY/releases/download/v99.0.0/dian-99.0.0.apk") }
                     "current" -> UpdateSource { AppRelease(BuildConfig.VERSION_NAME, "https://github.com/$UPDATE_REPOSITORY/releases/tag/v${BuildConfig.VERSION_NAME}", null) }
                     "empty" -> UpdateSource { null }
                     "failure" -> UpdateSource { throw java.io.IOException("Fixture network interruption") }

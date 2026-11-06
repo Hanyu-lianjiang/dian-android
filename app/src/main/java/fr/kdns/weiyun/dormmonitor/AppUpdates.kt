@@ -7,7 +7,7 @@ import java.net.HttpURLConnection
 import java.net.URI
 import java.net.URL
 
-internal const val UPDATE_REPOSITORY = "Hanyu-lianjiang/dianshi-android"
+internal const val UPDATE_REPOSITORY = "Hanyu-lianjiang/dian-android"
 data class AppRelease(val version: String, val page: String, val apk: String?)
 internal data class UpdateState(val checking: Boolean = false, val message: String = "", val release: AppRelease? = null)
 fun interface UpdateSource { suspend fun latest(): AppRelease? }
@@ -42,7 +42,7 @@ internal class GitHubUpdates : UpdateSource {
         try {
             connection.connectTimeout = 12_000; connection.readTimeout = 12_000
             connection.setRequestProperty("Accept", "application/vnd.github+json")
-            connection.setRequestProperty("User-Agent", "Dianshi/${BuildConfig.VERSION_NAME}")
+            connection.setRequestProperty("User-Agent", "Dian/${BuildConfig.VERSION_NAME}")
             connection.setRequestProperty("X-GitHub-Api-Version", "2022-11-28")
             when (connection.responseCode) {
                 404 -> return@withContext null
@@ -59,7 +59,7 @@ internal class GitHubUpdates : UpdateSource {
             val assets = release.optJSONArray("assets")
             val urls = (0 until (assets?.length() ?: 0)).mapNotNull { assets?.optJSONObject(it)?.optString("browser_download_url") }
                 .filter { releaseUrlAllowed(it, true) }
-            val apk = urls.firstOrNull { it.substringAfterLast('/').startsWith("dianshi-", true) }
+            val apk = urls.firstOrNull { it.substringAfterLast('/').startsWith("dian-", true) }
                 ?: urls.firstOrNull { it.contains("universal", true) } ?: urls.singleOrNull()
             AppRelease(version, page, apk)
         } finally { connection.disconnect() }
