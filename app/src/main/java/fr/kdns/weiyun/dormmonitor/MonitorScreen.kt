@@ -42,12 +42,19 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
-        ViewModelProvider(this)[MonitorModel::class.java].openDorm(intent.getStringExtra("dorm_id"))
+        if (savedInstanceState == null) openLaunchDestination(intent)
         setContent { DormTheme { MonitorScreen() } }
     }
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent); setIntent(intent)
-        ViewModelProvider(this)[MonitorModel::class.java].openDorm(intent.getStringExtra("dorm_id"))
+        openLaunchDestination(intent)
+    }
+    private fun openLaunchDestination(intent: Intent) {
+        val dormId = intent.getStringExtra("dorm_id")
+        // A widget destination belongs to this launch only, not future task restores.
+        intent.removeExtra("dorm_id")
+        val model = ViewModelProvider(this)[MonitorModel::class.java]
+        if (dormId.isNullOrBlank()) model.openOverview() else model.openDorm(dormId)
     }
     override fun onResume() {
         super.onResume()

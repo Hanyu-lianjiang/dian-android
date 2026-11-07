@@ -126,6 +126,12 @@ class MonitorModel @JvmOverloads constructor(app: Application, private val repos
             if (dorm != null) detail(dorm) else { page = "home"; error = "当前账号无法查看该宿舍，请重新选择小组件宿舍" }
         }
     }
+    fun openOverview() {
+        pendingDormId = null
+        detailSerial++; detailJob?.cancel(); detailJob = null; detailRequest = null
+        selected = null; detailPoints = emptyList(); detailRefreshing = false; detailError = ""
+        error = ""; page = "home"
+    }
     fun openDorm(id: String?) {
         if (id.isNullOrBlank()) return
         val dorm = dorms.find { it.optString("id") == id }

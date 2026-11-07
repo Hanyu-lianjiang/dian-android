@@ -35,6 +35,7 @@ class VisualVerification : Instrumentation() {
     private lateinit var args: Bundle
     override fun onCreate(arguments: Bundle?) { args = arguments ?: Bundle(); start() }
     override fun onStart() {
+        if (args.getString("page") == "launch-routing") { LaunchRoutingVerification(this).run(); return }
         if (args.getString("page") == "session-startup") { SessionStartupVerification(this).run(); return }
         if (args.getString("page") == "widget-palettes") { verifyWidgetPalettes(); return }
         try {
@@ -184,7 +185,7 @@ class VisualVerification : Instrumentation() {
     }
 }
 
-private class FixtureApi(empty: Boolean, private val feedback: String, private val delay: Long) : DormApi {
+internal class FixtureApi(empty: Boolean, private val feedback: String, private val delay: Long) : DormApi {
     val requests = mutableMapOf<String, Int>()
     private val rooms = JSONArray().apply {
         (if (empty) emptyList() else listOf("L2-505" to 151.44, "6B-609" to 434.58, "9A-503" to 22.64)).forEachIndexed { index, (title, remaining) ->
