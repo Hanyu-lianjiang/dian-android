@@ -42,4 +42,11 @@ class AppUpdatesTest {
         assertFalse(releaseMetadataUrlAllowed("https://github.com/other/repo/releases/download/v1.0.1/update.json"))
         assertFalse(releaseMetadataUrlAllowed("https://github.com/$UPDATE_REPOSITORY/releases/download/v1.0.1/other.json"))
     }
+
+    @Test fun acceptsBuildRevisionTagsWithoutChangingAppVersionName() {
+        assertTrue(releaseTagMatchesBuild("v1.0.1.15", "1.0.1", 15))
+        assertTrue(releaseTagMatchesBuild("1.0.1", "1.0.1", 15))
+        assertFalse(releaseTagMatchesBuild("v1.0.2", "1.0.1", 15))
+        assertFalse(releaseTagMatchesBuild("v1.0.1.14", "1.0.1", 15))
+    }
 }

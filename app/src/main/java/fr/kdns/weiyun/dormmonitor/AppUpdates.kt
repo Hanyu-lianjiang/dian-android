@@ -54,6 +54,11 @@ internal fun releaseMetadataUrlAllowed(value: String): Boolean = runCatching {
 internal fun releaseIsNewer(release: AppRelease, installedVersion: String, installedCode: Long): Boolean =
     release.versionCode?.let { it > installedCode } ?: (compareAppVersions(release.version, installedVersion)?.let { it > 0 } == true)
 
+internal fun releaseTagMatchesBuild(tag: String, versionName: String, versionCode: Long): Boolean {
+    val normalizedTag = tag.trim().removePrefix("v").removePrefix("V")
+    return normalizedTag == versionName || normalizedTag == "$versionName.$versionCode"
+}
+
 internal suspend fun downloadReleaseApk(url: String, expectedSha256: String?, context: Context, onProgress: (Int) -> Unit): File = withContext(Dispatchers.IO) {
     require(releaseUrlAllowed(url, true)) { "更新地址无效" }
     val directory = File(context.filesDir, "updates").apply { mkdirs() }
@@ -160,8 +165,8 @@ internal class GitHubUpdates : UpdateSource {
             val sha256 = metadata?.optString("sha256")?.takeIf { it.matches(Regex("[a-fA-F0-9]{64}")) }
             if (metadata != null) {
                 check(metadata.optString("packageName") == BuildConfig.APPLICATION_ID) { "更新包信息与应用不匹配" }
-                check(metadata.optString("versionName") == version.removePrefix("v").removePrefix("V")) { "更新版本信息不一致" }
                 check(versionCode != null && sha256 != null) { "更新包校验信息缺失" }
+                check(releaseTagMatchesBuild(version, metadata.optString("versionName"), versionCode)) { "更新版本信息不一致" }
             }
             AppRelease(version, page, apk, versionCode, sha256)
         } finally { connection.disconnect() }
