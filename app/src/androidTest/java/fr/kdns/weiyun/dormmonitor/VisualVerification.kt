@@ -35,6 +35,7 @@ class VisualVerification : Instrumentation() {
     private lateinit var args: Bundle
     override fun onCreate(arguments: Bundle?) { args = arguments ?: Bundle(); start() }
     override fun onStart() {
+        if (args.getString("page") == "session-startup") { SessionStartupVerification(this).run(); return }
         if (args.getString("page") == "widget-palettes") { verifyWidgetPalettes(); return }
         try {
             verifyAppearance()

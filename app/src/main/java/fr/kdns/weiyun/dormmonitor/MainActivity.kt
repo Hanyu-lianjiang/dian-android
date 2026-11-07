@@ -18,7 +18,10 @@ import java.io.File
 private fun org.json.JSONArray.objects() = (0 until length()).mapNotNull { optJSONObject(it) }
 private fun historyRows(dorm: JSONObject) = dorm.optJSONArray("history")?.objects().orEmpty()
 
+enum class SessionStartup { RESTORING, RETRY, READY }
+
 class MonitorModel @JvmOverloads constructor(app: Application, private val repository: DormApi = DormRepository(app), private val updates: UpdateSource = GitHubUpdates()) : AndroidViewModel(app) {
+    var sessionStartup by mutableStateOf(if (SessionStore.get(app).isEmpty()) SessionStartup.READY else SessionStartup.RESTORING); private set
     var role by mutableStateOf(""); private set
     var username by mutableStateOf(""); private set
     var page by mutableStateOf("home")
@@ -72,8 +75,9 @@ class MonitorModel @JvmOverloads constructor(app: Application, private val repos
         selected = null; detailError = ""; detailRefreshing = false
     }
     private fun handleError(e: Exception): String {
-        if (e is DormApiException && e.status == 401 && role.isNotEmpty()) {
+        if (e is DormApiException && e.status == 401 && (role.isNotEmpty() || sessionStartup != SessionStartup.READY)) {
             SessionStore.clear(ctx); resetDetails(); role = ""; username = ""; dorms = emptyList(); catalog = emptyList(); page = "home"; DormWidgetProvider.clearWidgets(ctx)
+            sessionStartup = SessionStartup.READY
         }
         return if (e is DormApiException) e.message ?: "操作失败，请重试" else "连接失败，请检查网络后重试"
     }
@@ -90,8 +94,20 @@ class MonitorModel @JvmOverloads constructor(app: Application, private val repos
     private suspend fun call(path: String, method: String = "GET", body: JSONObject? = null) = repository.call(path, method, body)
     init {
         checkForUpdates()
-        if (SessionStore.get(ctx).isNotEmpty()) run {
-            val session = call("/api/session"); role = session.getString("role"); username = session.optString("username"); load()
+        if (sessionStartup == SessionStartup.RESTORING) restoreSession()
+    }
+    fun restoreSession() {
+        if (busy || sessionStartup == SessionStartup.READY) return
+        sessionStartup = SessionStartup.RESTORING
+        run {
+            try {
+                val session = call("/api/session")
+                role = session.getString("role"); username = session.optString("username")
+                sessionStartup = SessionStartup.READY
+                load()
+            } finally {
+                if (sessionStartup == SessionStartup.RESTORING) sessionStartup = SessionStartup.RETRY
+            }
         }
     }
     private suspend fun load() {

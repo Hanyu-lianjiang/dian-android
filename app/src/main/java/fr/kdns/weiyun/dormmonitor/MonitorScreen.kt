@@ -56,6 +56,10 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable fun MonitorScreen(vm: MonitorModel = viewModel()) {
+    if (vm.sessionStartup != SessionStartup.READY) {
+        SessionStartupScreen(vm)
+        return
+    }
     var json by remember { mutableStateOf("") }
     var appearanceOrigin by remember { mutableStateOf("home") }
     val confirmRemove = remember { mutableStateOf(false) }
@@ -142,6 +146,26 @@ class MainActivity : ComponentActivity() {
                 AppButton("稍后", { updateDialog.value = false }, Modifier.weight(1f))
                 AppButton("下载并安装", { vm.downloadUpdate() }, Modifier.weight(1f), primary = true, icon = Icons.Outlined.Download,
                     enabled = update.release?.apk != null)
+            }
+        }
+    }
+}
+
+@Composable private fun SessionStartupScreen(vm: MonitorModel) {
+    Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
+        Column(Modifier.fillMaxSize().safeDrawingPadding().padding(32.dp),
+            horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
+            BrandMark(Modifier.size(64.dp))
+            Spacer(Modifier.height(20.dp))
+            Text(stringResource(R.string.app_name), style = MaterialTheme.typography.headlineMedium)
+            Spacer(Modifier.height(24.dp))
+            if (vm.sessionStartup == SessionStartup.RESTORING) {
+                CircularProgressIndicator(Modifier.size(24.dp), strokeWidth = 2.dp)
+            } else {
+                Text(vm.error.ifEmpty { "暂时无法连接，请稍后重试" }, style = MaterialTheme.typography.bodyMedium,
+                    textAlign = androidx.compose.ui.text.style.TextAlign.Center)
+                Spacer(Modifier.height(16.dp))
+                AppButton("重试", vm::restoreSession, icon = Icons.Outlined.Refresh)
             }
         }
     }
