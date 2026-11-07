@@ -133,29 +133,7 @@ class MainActivity : ComponentActivity() {
     SuperDialog(show = confirmAuth, title = "更新学校授权", summary = "所有宿舍将使用新的登录态继续查询。", onDismissRequest = { confirmAuth.value = false }) {
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) { AppButton("取消", { confirmAuth.value = false }, Modifier.weight(1f)); AppButton("更新", { vm.updateGlobalAuth(json) { json = "" }; confirmAuth.value = false }, Modifier.weight(1f), primary = true) }
     }
-    SuperDialog(show = updateDialog, title = "发现新版本 ${vm.updateState.release?.version.orEmpty()}",
-        onDismissRequest = { updateDialog.value = false }) {
-        val update = vm.updateState
-        if (update.downloading) {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                LinearProgressIndicator(progress = { update.downloadProgress / 100f }, Modifier.fillMaxWidth())
-                Text("正在下载 ${update.downloadProgress}%")
-            }
-        } else if (update.downloadedFile != null) {
-            Text(update.message)
-            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                AppButton("稍后", { updateDialog.value = false }, Modifier.weight(1f))
-                AppButton("安装更新", { vm.installDownloadedUpdate() }, Modifier.weight(1f), primary = true, icon = Icons.Outlined.InstallMobile)
-            }
-        } else {
-            if (update.message.isNotEmpty()) Text(update.message)
-            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                AppButton("稍后", { updateDialog.value = false }, Modifier.weight(1f))
-                AppButton("下载并安装", { vm.downloadUpdate() }, Modifier.weight(1f), primary = true, icon = Icons.Outlined.Download,
-                    enabled = update.release?.apk != null)
-            }
-        }
-    }
+    UpdateDialog(updateDialog, vm.updateState, vm::downloadUpdate, vm::installDownloadedUpdate)
 }
 
 @Composable private fun SessionStartupScreen(vm: MonitorModel) {

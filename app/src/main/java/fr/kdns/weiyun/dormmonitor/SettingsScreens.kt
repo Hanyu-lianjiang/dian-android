@@ -65,7 +65,7 @@ internal fun AboutScreen(vm: MonitorModel) {
                         state.downloading -> LinearProgressIndicator(progress = { state.downloadProgress / 100f }, Modifier.fillMaxWidth())
                         state.downloadedFile != null -> AppButton("安装更新", { vm.installDownloadedUpdate() }, Modifier.fillMaxWidth(),
                             primary = true, icon = Icons.Outlined.InstallMobile)
-                        else -> AppButton("下载并安装", { vm.downloadUpdate() }, Modifier.fillMaxWidth(),
+                        else -> AppButton("下载更新", { vm.downloadUpdate() }, Modifier.fillMaxWidth(),
                             enabled = release.apk != null, icon = Icons.Outlined.Download)
                     }
                 }
