@@ -67,19 +67,34 @@
                     android:textColor="@color/widget_yellow"
                     android:textSize="10sp" />
 
-                <TextView
-                    android:id="@+id/widget_status"
+                <RelativeLayout
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_marginStart="3dp"
-                    android:background="@drawable/status_pill_background"
-                    android:paddingStart="7dp"
-                    android:paddingTop="3dp"
-                    android:paddingEnd="7dp"
-                    android:paddingBottom="3dp"
-                    android:text="查询中"
-                    android:textColor="@color/widget_yellow"
-                    android:textSize="10sp" />
+                    android:layout_marginStart="3dp">
+                    <ImageView
+                        android:id="@+id/widget_status_background"
+                        android:layout_width="0dp"
+                        android:layout_height="0dp"
+                        android:layout_alignStart="@+id/widget_status"
+                        android:layout_alignEnd="@id/widget_status"
+                        android:layout_alignTop="@id/widget_status"
+                        android:layout_alignBottom="@id/widget_status"
+                        android:importantForAccessibility="no"
+                        android:scaleType="fitXY"
+                        android:src="@drawable/status_pill_background"
+                        android:tint="#DAE6E9" />
+                    <TextView
+                        android:id="@+id/widget_status"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:paddingStart="7dp"
+                        android:paddingTop="3dp"
+                        android:paddingEnd="7dp"
+                        android:paddingBottom="3dp"
+                        android:text="查询中"
+                        android:textColor="#3D6976"
+                        android:textSize="10sp" />
+                </RelativeLayout>
             </LinearLayout>
         </RelativeLayout>
 

@@ -35,6 +35,7 @@ class VisualVerification : Instrumentation() {
     private lateinit var args: Bundle
     override fun onCreate(arguments: Bundle?) { args = arguments ?: Bundle(); start() }
     override fun onStart() {
+        if (args.getString("page") == "widget-palettes") { verifyWidgetPalettes(); return }
         try {
             verifyAppearance()
             val intent = Intent(targetContext, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
@@ -42,6 +43,10 @@ class VisualVerification : Instrumentation() {
             lateinit var vm: MonitorModel
             val api = FixtureApi(args.getString("page") == "empty", args.getString("feedback", ""), args.getString("delay", "0").toLong())
             runOnMainSync {
+                if (args.getString("palette") != null || args.getString("mode") != null) {
+                    val prefs = targetContext.getSharedPreferences("appearance", android.content.Context.MODE_PRIVATE)
+                    Appearance.read(prefs).copy(mode = args.getString("mode", "light"), palette = args.getString("palette", "mist"), importTab = true).save(prefs)
+                }
                 val source = when (args.getString("update", "live")) {
                     "new" -> UpdateSource { AppRelease("v99.0.0", "https://github.com/$UPDATE_REPOSITORY/releases/tag/v99.0.0", "https://github.com/$UPDATE_REPOSITORY/releases/download/v99.0.0/dian-99.0.0.apk") }
                     "current" -> UpdateSource { AppRelease(BuildConfig.VERSION_NAME, "https://github.com/$UPDATE_REPOSITORY/releases/tag/v${BuildConfig.VERSION_NAME}", null) }
@@ -110,17 +115,49 @@ class VisualVerification : Instrumentation() {
                 WidgetAppearance.apply(targetContext, remote)
                 val nativeWidget = remote.apply(targetContext, FrameLayout(activity))
                 check(nativeWidget.findViewById<TextView>(R.id.widget_remaining).currentTextColor == WidgetAppearance.accent(targetContext))
+                if (args.getString("assets") == "true") captureBrandAssets(nativeWidget)
                 activity.setContent { DormTheme {
                     val contentColor = LocalContentColor.current
                     val expected = MaterialTheme.colorScheme.onSurface
                     SideEffect { check(contentColor == expected) { "Unstyled content text" } }
-                    if (args.getString("page") == "glass") GlassNavigationFixture() else MonitorScreen(vm)
+                    if (args.getString("page") == "widget-refresh") {
+                        var refreshes by remember { mutableIntStateOf(0) }
+                        Column(Modifier.fillMaxSize().statusBarsPadding().padding(20.dp)) {
+                            Text("选择宿舍")
+                            WidgetRefreshButton(enabled = true) { refreshes++ }
+                            Text("刷新次数：$refreshes")
+                        }
+                    } else if (args.getString("page") == "glass") GlassNavigationFixture() else MonitorScreen(vm)
                 } }
             }
             waitForIdleSync()
             sendStatus(0, Bundle().apply { putString("result", "ready; appearance persistence, corrupt preferences and 30 contrast checks passed; ${args.getString("page")} checks passed") })
             // Leave the fixture visible for UIAutomator interaction and screenshots.
         } catch (e: Exception) { finish(1, Bundle().apply { putString("error", e.toString()) }) }
+    }
+    private fun captureBrandAssets(widget: android.view.View) {
+        val directory = java.io.File(targetContext.getExternalFilesDir(null), "brand-verification").apply { mkdirs() }
+        fun save(name: String, width: Int, height: Int, draw: (android.graphics.Canvas) -> Unit) {
+            val bitmap = android.graphics.Bitmap.createBitmap(width, height, android.graphics.Bitmap.Config.ARGB_8888)
+            draw(android.graphics.Canvas(bitmap))
+            java.io.File(directory, "$name.png").outputStream().use { bitmap.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, it) }
+            bitmap.recycle()
+        }
+        fun drawable(name: String, image: android.graphics.drawable.Drawable, size: Int) {
+            save(name, size, size) { image.setBounds(0, 0, size, size); image.draw(it) }
+        }
+        drawable("launcher", targetContext.packageManager.getApplicationIcon(targetContext.packageName), 256)
+        listOf(24, 48, 96).forEach { size -> drawable("brand-$size", targetContext.getDrawable(R.drawable.ic_brand)!!, size) }
+        if (android.os.Build.VERSION.SDK_INT >= 33) {
+            val icon = targetContext.packageManager.getApplicationIcon(targetContext.packageName) as android.graphics.drawable.AdaptiveIconDrawable
+            val foreground = checkNotNull(icon.monochrome).mutate().apply { setTint(android.graphics.Color.rgb(61, 105, 118)) }
+            drawable("launcher-themed", android.graphics.drawable.AdaptiveIconDrawable(android.graphics.drawable.ColorDrawable(android.graphics.Color.rgb(226, 237, 240)), foreground), 256)
+        }
+        val width = (320 * targetContext.resources.displayMetrics.density).toInt()
+        val height = (180 * targetContext.resources.displayMetrics.density).toInt()
+        widget.measure(android.view.View.MeasureSpec.makeMeasureSpec(width, android.view.View.MeasureSpec.EXACTLY), android.view.View.MeasureSpec.makeMeasureSpec(height, android.view.View.MeasureSpec.EXACTLY))
+        widget.layout(0, 0, width, height)
+        save("widget", width, height) { widget.draw(it) }
     }
     private fun verifyAppearance() {
         val prefs = context.getSharedPreferences("appearance-verification", 0)

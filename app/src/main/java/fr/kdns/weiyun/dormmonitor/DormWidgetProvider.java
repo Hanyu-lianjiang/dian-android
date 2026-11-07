@@ -7,7 +7,6 @@ import android.appwidget.AppWidgetProvider;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
-import android.graphics.Color;
 import android.net.Uri;
 import android.os.Build;
 import android.view.View;
@@ -40,10 +39,6 @@ public class DormWidgetProvider extends AppWidgetProvider {
     // JobService owns the request lifetime. One request updates every widget.
     private static final int CONNECT_TIMEOUT_MS = 5_000;
     private static final int READ_TIMEOUT_MS = 5_000;
-    private static final int BLUE = Color.rgb(138, 155, 255);
-    private static final int GREEN = Color.rgb(54, 211, 90);
-    private static final int YELLOW = Color.rgb(240, 170, 39);
-    private static final int RED = Color.rgb(240, 90, 90);
     private static final ZoneId SHANGHAI = ZoneId.of("Asia/Shanghai");
     private static final DateTimeFormatter TIME_FORMAT = DateTimeFormatter.ofPattern("HH:mm", Locale.CHINA).withZone(SHANGHAI);
 
@@ -62,6 +57,7 @@ public class DormWidgetProvider extends AppWidgetProvider {
     @Override
     public void onDeleted(Context context, int[] appWidgetIds) {
         for (int appWidgetId : appWidgetIds) {
+            WidgetAppearance.forgetStatus(context, appWidgetId);
             context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
                     .edit()
                     .remove(PREF_SELECTOR_PREFIX + appWidgetId)
@@ -106,8 +102,7 @@ public class DormWidgetProvider extends AppWidgetProvider {
         for (int id : getWidgetIds(context)) {
             RemoteViews views = new RemoteViews(context.getPackageName(), R.layout.widget_dorm_electric);
             views.setTextViewText(R.id.widget_status, state);
-            views.setTextColor(R.id.widget_status, WidgetAppearance.warning(context));
-            views.setTextColor(R.id.widget_status_dot, WidgetAppearance.warning(context));
+            WidgetAppearance.setStatus(context, views, id, WidgetAppearance.LOADING, false);
             AppWidgetManager.getInstance(context).partiallyUpdateAppWidget(id, views);
         }
     }
@@ -280,8 +275,7 @@ public class DormWidgetProvider extends AppWidgetProvider {
         views.setTextViewText(R.id.widget_remaining, "--");
         views.setTextViewText(R.id.widget_status, "等待调度");
         views.setTextViewText(R.id.widget_status_dot, "●");
-        views.setTextColor(R.id.widget_status, WidgetAppearance.warning(context));
-        views.setTextColor(R.id.widget_status_dot, WidgetAppearance.warning(context));
+        WidgetAppearance.setStatus(context, views, appWidgetId, WidgetAppearance.LOADING);
         views.setTextViewText(R.id.widget_updated, "更新 --");
         setWidgetClick(views, context, appWidgetId, null);
         AppWidgetManager.getInstance(context).updateAppWidget(appWidgetId, views);
@@ -290,14 +284,12 @@ public class DormWidgetProvider extends AppWidgetProvider {
     private static void renderData(Context context, int appWidgetId, DormData data) {
         RemoteViews views = baseViews(context);
         boolean low = "ok".equals(data.status) && data.remaining != null && data.remaining < data.lowThreshold;
-        int statusColor = low ? WidgetAppearance.warning(context) : statusColor(context, data.status);
+        String style = low ? WidgetAppearance.WARNING : statusStyle(data.status);
         views.setTextViewText(R.id.widget_location, data.location);
         views.setTextViewText(R.id.widget_remaining, data.remaining == null ? "--" : String.format(Locale.US, "%.2f", data.remaining));
         views.setTextViewText(R.id.widget_status, low ? "电量偏低" : statusText(data.status));
         views.setTextViewText(R.id.widget_status_dot, "●");
-        views.setTextColor(R.id.widget_status, statusColor);
-        views.setTextColor(R.id.widget_status_dot, statusColor);
-        views.setTextColor(R.id.widget_remaining, "ok".equals(data.status) && !low ? WidgetAppearance.accent(context) : statusColor);
+        WidgetAppearance.setStatus(context, views, appWidgetId, style);
         views.setTextViewText(R.id.widget_updated, "数据 " + formatTime(data.fetchedAt)
                 + " · 同步 " + TIME_FORMAT.format(Instant.now()));
         setWidgetClick(views, context, appWidgetId, data.id);
@@ -310,9 +302,7 @@ public class DormWidgetProvider extends AppWidgetProvider {
         views.setTextViewText(R.id.widget_remaining, "--");
         views.setTextViewText(R.id.widget_status, "稍后重试");
         views.setTextViewText(R.id.widget_status_dot, "●");
-        views.setTextColor(R.id.widget_status, WidgetAppearance.danger(context));
-        views.setTextColor(R.id.widget_status_dot, WidgetAppearance.danger(context));
-        views.setTextColor(R.id.widget_remaining, WidgetAppearance.danger(context));
+        WidgetAppearance.setStatus(context, views, appWidgetId, WidgetAppearance.ERROR);
         views.setTextViewText(R.id.widget_updated, "同步失败 · 等待重试");
         setWidgetClick(views, context, appWidgetId, null);
         AppWidgetManager.getInstance(context).updateAppWidget(appWidgetId, views);
@@ -340,14 +330,14 @@ public class DormWidgetProvider extends AppWidgetProvider {
         views.setOnClickPendingIntent(R.id.widget_root, pendingIntent);
     }
 
-    private static int statusColor(Context context, String status) {
+    private static String statusStyle(String status) {
         if ("ok".equals(status)) {
-            return WidgetAppearance.accent(context);
+            return WidgetAppearance.NORMAL;
         }
         if ("needs_rebind".equals(status)) {
-            return WidgetAppearance.danger(context);
+            return WidgetAppearance.ERROR;
         }
-        return WidgetAppearance.warning(context);
+        return WidgetAppearance.WARNING;
     }
 
     private static String statusText(String status) {

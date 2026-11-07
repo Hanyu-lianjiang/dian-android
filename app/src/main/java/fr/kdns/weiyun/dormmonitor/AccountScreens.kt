@@ -59,7 +59,7 @@ import androidx.compose.ui.unit.Dp
             if (vm.thresholdLoading) Text("正在读取提醒设置…", style = MaterialTheme.typography.bodySmall)
             if (vm.thresholdError.isNotEmpty()) {
                 Text(vm.thresholdError, color = MaterialTheme.colorScheme.error)
-                AppButton("重试", { vm.openThreshold(force = true) }, enabled = !vm.thresholdLoading)
+                AppButton("重试", { vm.openThreshold(force = true) }, enabled = !vm.thresholdLoading, icon = Icons.Outlined.Refresh)
             }
             AppTextField(vm.threshold, { vm.threshold = it }, "阈值（度）", enabled = !vm.thresholdLoading && !vm.busy, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal))
             AppButton("保存", vm::saveThreshold, Modifier.fillMaxWidth(), enabled = !vm.busy && !vm.thresholdLoading && vm.thresholdError.isEmpty() && vm.threshold.toDoubleOrNull()?.let { it.isFinite() && it in 0.0..100000.0 } == true, primary = true, icon = Icons.Outlined.Check)

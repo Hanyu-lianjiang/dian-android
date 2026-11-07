@@ -13,6 +13,8 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -113,7 +115,7 @@ class DormWidgetConfigActivity : ComponentActivity() {
                         if (!model.busy && model.dorms.isEmpty() && model.error.isEmpty()) Text("当前账号尚未选择宿舍")
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             if (model.loginRequired || model.dorms.isEmpty()) AppButton(if (model.loginRequired) "登录应用" else "添加宿舍", onClick = { startActivity(Intent(this@DormWidgetConfigActivity, MainActivity::class.java)) })
-                            AppButton("刷新", onClick = { model.load(widgetId) }, enabled = !model.busy)
+                            WidgetRefreshButton(enabled = !model.busy) { model.load(widgetId) }
                         }
                         LazyColumn(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                             items(model.dorms, key = { it.id }) { dorm ->
@@ -135,5 +137,12 @@ class RefreshSettingsActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent { DormTheme { Surface(Modifier.fillMaxSize()) { Box(Modifier.statusBarsPadding().navigationBarsPadding().padding(horizontal = 24.dp)) { WidgetSettings(onBack = { finish() }) } } } }
+    }
+}
+
+@Composable
+internal fun WidgetRefreshButton(enabled: Boolean, onClick: () -> Unit) {
+    IconButton(onClick = onClick, enabled = enabled, modifier = Modifier.size(48.dp)) {
+        Icon(Icons.Outlined.Refresh, "刷新宿舍列表", tint = MaterialTheme.colorScheme.primary)
     }
 }

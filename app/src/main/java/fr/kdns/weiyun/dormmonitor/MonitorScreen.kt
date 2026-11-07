@@ -19,6 +19,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.rememberGraphicsLayer
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -28,6 +29,14 @@ import top.yukonga.miuix.kmp.basic.NavigationBar as MiuixNavigationBar
 import top.yukonga.miuix.kmp.basic.NavigationItem
 import top.yukonga.miuix.kmp.basic.Scaffold as MiuixScaffold
 import top.yukonga.miuix.kmp.extra.SuperDialog
+
+private data class MainDestination(val title: String, val icon: ImageVector)
+
+private fun mainDestination(page: String) = when (page) {
+    "catalog" -> MainDestination("添加", Icons.Outlined.AddCircleOutline)
+    "settings" -> MainDestination("设置", Icons.Outlined.Tune)
+    else -> MainDestination("宿舍", Icons.Outlined.Cottage)
+}
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -52,6 +61,7 @@ class MainActivity : ComponentActivity() {
     val backdrop = remember(backdropLayer) { NavigationBackdrop(backdropLayer) }
     val glass = LocalAppearance.current.glass
     val loggedIn = vm.role.isNotEmpty()
+    val destination = mainDestination(vm.page)
     val subPage = vm.page in listOf("detail", "widget", "about", "register", "appearance", "threshold", "authorization")
     fun appearance() { appearanceOrigin = vm.page; vm.clearError(); vm.page = "appearance" }
     fun back() {
@@ -67,8 +77,9 @@ class MainActivity : ComponentActivity() {
     MiuixScaffold(topBar = {
         Row(Modifier.fillMaxWidth().statusBarsPadding().padding(horizontal = 20.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
             if (subPage) IconButton(onClick = ::back, enabled = !vm.busy || vm.page == "detail") { Icon(Icons.Outlined.ArrowBack, "返回") }
-            else { BrandMark(Modifier.padding(end = 12.dp).size(30.dp)) }
-            Text(when (vm.page) { "register" -> "注册账号"; "appearance" -> "主题与外观"; "widget" -> "桌面小组件"; "threshold" -> "低电量提醒"; "authorization" -> "学校查询授权"; "detail" -> vm.selected?.optString("title") ?: "宿舍详情"; "about" -> "关于"; else -> stringResource(R.string.app_name) }, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
+            else if (loggedIn) Icon(destination.icon, null, Modifier.padding(end = 12.dp).size(28.dp), tint = MaterialTheme.colorScheme.primary)
+            else BrandMark(Modifier.padding(end = 12.dp).size(28.dp))
+            Text(when (vm.page) { "register" -> "注册账号"; "appearance" -> "主题与外观"; "widget" -> "桌面小组件"; "threshold" -> "低电量提醒"; "authorization" -> "学校查询授权"; "detail" -> vm.selected?.optString("title") ?: "宿舍详情"; "about" -> stringResource(R.string.about_app, stringResource(R.string.app_name)); else -> if (loggedIn) destination.title else stringResource(R.string.app_name) }, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
             if (vm.page != "appearance") IconButton(onClick = ::appearance) { Icon(Icons.Outlined.Palette, "主题与外观", tint = MaterialTheme.colorScheme.primary) }
         }
     }, bottomBar = {
@@ -122,11 +133,8 @@ class MainActivity : ComponentActivity() {
     val pages = if (p.importTab) listOf("home", "catalog", "settings") else listOf("home", "settings")
     // Keep the current import destination reachable if its tab is hidden while importing.
     val selected = pages.indexOf(vm.page).coerceAtLeast(0)
-    val items = pages.map { when (it) {
-        "catalog" -> NavigationItem("添加", Icons.Outlined.AddCircleOutline)
-        "settings" -> NavigationItem("设置", Icons.Outlined.Tune)
-        else -> NavigationItem("宿舍", Icons.Outlined.Cottage)
-    } }
+    val destinations = pages.map(::mainDestination)
+    val items = destinations.map { NavigationItem(it.title, it.icon) }
     val onSelect: (Int) -> Unit = { index ->
         if (!vm.busy) when (pages[index]) {
             "home" -> { vm.clearError(); vm.page = "home" }
@@ -141,11 +149,7 @@ class MainActivity : ComponentActivity() {
         if (p.glass) {
             GlassNavigationBar(
                 layer = backdrop.layer, layerOrigin = backdrop.origin,
-                items = pages.map { when (it) {
-                    "catalog" -> GlassNavigationItem("添加", Icons.Outlined.AddCircleOutline)
-                    "settings" -> GlassNavigationItem("设置", Icons.Outlined.Tune)
-                    else -> GlassNavigationItem("宿舍", Icons.Outlined.Cottage)
-                } },
+                items = destinations.map { GlassNavigationItem(it.title, it.icon) },
                 selected = selected, onSelect = onSelect,
                 modifier = Modifier.then(if (p.floating) Modifier else Modifier.navigationBarsPadding()),
                 enabled = !vm.busy, floating = p.floating

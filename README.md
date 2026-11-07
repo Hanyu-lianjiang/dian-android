@@ -1,6 +1,6 @@
 # 電 Android 应用
 
-版本 `1.0.0`，版本代码 `13`。Kotlin、Jetpack Compose、MVVM、Gradle、Android Jetpack；登录、总览、导入、详情、设置和小组件配置使用官方 Miuix `0.5.1` 组件。最低 Android 8（API 26），编译和目标 SDK 35。
+版本 `1.0.1`，版本代码 `13`。Kotlin、Jetpack Compose、MVVM、Gradle、Android Jetpack；登录、总览、导入、详情、设置和小组件配置使用官方 Miuix `0.5.1` 组件。最低 Android 8（API 26），编译和目标 SDK 35。
 
 ## 使用
 
@@ -8,11 +8,11 @@
 
 注册进入独立页面，要求确认密码。个人低电量阈值在设置中保存。会话由 Android Keystore 加密保存，应用与桌面小组件共用；失效后重新登录。学校授权保留在服务端，不保存到客户端。
 
-小组件只从本人已添加的宿舍中选择，点击在应用内打开详情。设置页保留一个更换宿舍入口；存在多个小组件时先选择目标组件。系统省电策略可能延迟调度，以组件显示的最近成功查询时间为准。
+小组件只从本人已添加的宿舍中选择，点击在应用内打开详情。设置页保留一个更换宿舍入口；存在多个小组件时先选择目标组件。状态标签使用与卡片协调的柔和色底，正常跟随主题、低电量使用琥珀色、异常使用红色；配色变化即时更新已有小组件，并保留当前状态。系统省电策略可能延迟调度，以组件显示的最近成功查询时间为准。
 
 趋势图提供真实采样点与中国标准时间；“5分钟”档查看最近一小时的五分钟采样。单条历史也可显示，不要求至少两个采样。总览隐藏电表总用电量、历史采样数量，详情中保留。
 
-“主题与外观”支持跟随系统、浅色、深色，Android 12 起可使用壁纸动态配色；另提供五组柔和配色及自选 HEX 颜色。可调整纯黑背景、悬浮底栏、液态玻璃、添加入口、紧凑卡片和趋势缩略图。设置即时保存到本机，小组件同步使用所选配色。应用图标采用简洁闪电，并提供系统主题图标资源。
+“主题与外观”支持跟随系统、浅色、深色，Android 12 起可使用壁纸动态配色；另提供五组柔和配色及自选 HEX 颜色。可调整纯黑背景、悬浮底栏、液态玻璃、添加入口、紧凑卡片和趋势缩略图。设置即时保存到本机，小组件同步使用所选配色。应用图标采用插头与负形闪电组合标志，并提供系统主题图标资源。菜单页头显示对应图标与名称；关于页展示应用标志、名称、产品口号与版本。
 
 ## 导航与反馈
 
@@ -36,7 +36,7 @@ Windows 在本目录执行：
 ./build-release.ps1
 ```
 
-脚本在新的英文临时目录构建，执行 `assembleRelease`、`testReleaseUnitTest` 和 `lintRelease`，校验签名后复制正式 APK 至 `app/build/outputs/apk/release/dorm-electric-1.0.0.apk`，检查报告至 `app/build/verification/`。临时目录保留供检查构建诊断。不会生成用于安装的调试 APK。
+脚本在新的英文临时目录构建，执行 `assembleRelease`、`testReleaseUnitTest` 和 `lintRelease`，校验签名后复制正式 APK 至 `app/build/outputs/apk/release/dorm-electric-1.0.1.apk`，检查报告至 `app/build/verification/`。临时目录保留供检查构建诊断。不会生成用于安装的调试 APK。
 
 在英文路径也可直接运行：
 
@@ -53,15 +53,25 @@ Windows 在本目录执行：
 使用 `./build-release.ps1 -IncludeDeviceChecks` 额外生成独立的正式签名 instrumentation APK，位于 `app/build/verification/visual-verification.apk`；它不包含在交付应用中。仅在隔离模拟器上安装正式 APK 和该检查 APK，再运行：
 
 ```powershell
-python ./verify-device.py --adb <ADB路径> --serial <模拟器序列号> --output ./dist/1.0.0
+python ./verify-device.py --adb <ADB路径> --serial <模拟器序列号> --output ./dist/1.0.1
 ```
 
 该脚本使用本地虚拟数据检查界面，输出截图与 `device-verification.json`。不提供生产会话，不调用真实宿舍接口；不要在日常使用的手机上运行此检查。真实上游连接、厂商系统适配和桌面小组件的系统调度仍需独立验收。
+
+品牌界面专项检查使用相同模拟器和检查 APK：
+
+```powershell
+python ./verify-device.py --adb <ADB路径> --serial <模拟器序列号> --output ./dist/brand-1.0.1 --focus brand
+```
+
+专项检查覆盖菜单页头、关于页、品牌图标、更新与群号复制，以及 320dp 窄屏大字体和横屏滚动；输出 `brand-verification.json`、界面截图和系统绘制的图标资源预览。
+
+使用 `--focus widget` 检查 132 组原生小组件渲染：全部预设和壁纸配色、自定义极端颜色、深浅色与纯黑背景、正常及告警状态，并验证主题重着色保留文字与状态。输出实际渲染图片和 `widget-verification/checks.json`。
 
 追加 `--focus import-update` 可检查确认添加、小屏大字体、贴边底栏与更新状态。最后一步会对公开更新源执行只读 GET。
 
 ## 更新发布
 
-“关于 → 检查更新”手动查询公开仓库 `Hanyu-lianjiang/dian-android` 的最新正式 GitHub Release。版本标签采用 `v1.0.0` 格式；忽略草稿和预发布。上传同一正式签名的 `dian-<版本>.apk` 后，客户端显示下载入口，通过系统浏览器下载并由用户确认安装。尚无正式发布或发布源不可访问时，显示“暂未找到可用版本”，不会据此判断已经是最新版。
+“关于 → 检查更新”手动查询公开仓库 `Hanyu-lianjiang/dian-android` 的最新正式 GitHub Release。版本标签采用 `v1.0.1` 格式；忽略草稿和预发布。上传同一正式签名的 `dian-<版本>.apk` 后，客户端显示下载入口，通过系统浏览器下载并由用户确认安装。尚无正式发布或发布源不可访问时，显示“暂未找到可用版本”，不会据此判断已经是最新版。
 
 GitHub 仓库和 Releases 只用于客户端分发；学校授权与个人数据由现有服务端管理。签名文件及访问凭据不进入公开仓库。

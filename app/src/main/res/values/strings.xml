@@ -1,6 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">電</string>
+    <string name="app_tagline">别等断电，才想起充电费。</string>
+    <string name="about_app">关于%1$s</string>
+    <string name="app_version">版本 %1$s</string>
     <string name="widget_description">查看宿舍剩余电量</string>
     <string name="widget_icon_description">@string/app_name</string>
 </resources>

@@ -14,7 +14,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument('--adb', required=True)
 parser.add_argument('--serial', required=True)
 parser.add_argument('--output', required=True)
-parser.add_argument('--focus', choices=('all', 'import-update'), default='all')
+parser.add_argument('--focus', choices=('all', 'import-update', 'brand', 'widget'), default='all')
 args = parser.parse_args()
 out = Path(args.output).resolve()
 shots = out / 'screenshots'
@@ -112,6 +112,90 @@ def back():
 
 
 try:
+    if args.focus == 'widget':
+        result = adb('shell', 'am', 'instrument', '-w', '-e', 'page', 'widget-palettes', package + '.test/' + package + '.VisualVerification').decode()
+        assert '132 native widget renders' in result, result
+        (out / 'widget-instrumentation.log').write_text(result, encoding='utf-8')
+        adb('pull', '/sdcard/Android/data/' + package + '/files/widget-verification', str(out / 'widget-verification'))
+        fixture('about', mode='light', palette='mist', assets='true', update='current')
+        check('关于電'); check('别等断电，才想起充电费。'); check('版本 1.0.1'); snapshot('about-new-logo')
+        adb('pull', '/sdcard/Android/data/' + package + '/files/brand-verification', str(out / 'assets'))
+        fixture('login', mode='light', palette='mist'); check('電'); snapshot('login-new-logo')
+        print(result, flush=True)
+        raise SystemExit(0)
+    if args.focus == 'brand':
+        def header(label):
+            nodes = [n for n in tree().iter('node') if n.get('text') == label]
+            assert nodes, 'Missing header: ' + label
+            boxes = [tuple(map(int, re.findall(r'\d+', node.get('bounds')))) for node in nodes]
+            assert any(x2 > x1 and y2 > y1 and y1 < 250 for x1, y1, x2, y2 in boxes), boxes
+
+        def screen_size():
+            size = adb('shell', 'wm', 'size').decode().splitlines()[-1]
+            return tuple(map(int, re.findall(r'(\d+)x(\d+)', size)[0]))
+
+        def reveal(label):
+            width, height = screen_size()
+            for _ in range(24):
+                root = tree()
+                scroll = next(n for n in root.iter('node') if n.get('scrollable') == 'true')
+                left, top, right, bottom = map(int, re.findall(r'\d+', scroll.get('bounds')))
+                nodes = [n for n in root.iter('node') if n.get('text') == label or n.get('content-desc') == label]
+                for node in nodes:
+                    x1, y1, x2, y2 = map(int, re.findall(r'\d+', node.get('bounds')))
+                    if x2 > x1 and y2 > y1 and y1 >= top + 16 and y2 <= bottom - 16:
+                        return node
+                start, end = top + (bottom - top) * .75, top + (bottom - top) * .35
+                if nodes and int(re.findall(r'\d+', nodes[0].get('bounds'))[1]) < top + 16:
+                    start, end = end, start
+                adb('shell', 'input', 'swipe', str(width // 2), str(int(start)), str(width // 2), str(int(end)), '300')
+            raise AssertionError('Unreachable control: ' + label)
+
+        fixture('navigation', mode='light', palette='mist', delay=450, assets='true')
+        header('宿舍'); check('電', False); snapshot('header-home')
+        for _ in range(3):
+            click('添加'); header('添加'); check('选择校区')
+            if _ == 0: snapshot('header-import')
+            click('设置'); header('设置'); check('低电量提醒')
+            if _ == 0: snapshot('header-settings')
+            click('宿舍'); header('宿舍')
+        click('L2-505'); header('L2-505'); back(); header('宿舍')
+        results.append('Destination headers match all three tabs; repeated navigation preserves cached data and detail return')
+        adb('pull', '/sdcard/Android/data/' + package + '/files/brand-verification', str(out / 'assets'))
+        fixture('login', mode='light', palette='mist'); header('電'); snapshot('brand-login')
+        fixture('appearance', mode='light', palette='mist'); header('主题与外观'); check('電'); snapshot('brand-preview')
+        results.append('Shared vector renders in login, appearance preview, native widget, adaptive launcher and monochrome launcher')
+        fixture('about', mode='light', palette='mist', feedback='123456789', update='current')
+        header('关于電'); check('電'); check('别等断电，才想起充电费。'); check('版本 1.0.1')
+        assert sum(n.get('text') == '版本 1.0.1' for n in tree().iter('node')) == 1
+        click('检查更新'); check('已是最新版本'); snapshot('about-light')
+        click('复制群号')
+        fixture('login'); click('用户名'); adb('shell', 'input', 'keyevent', '279'); check('123456789')
+        adb('shell', 'input', 'keyevent', '4')
+        results.append('About identity, slogan, single version label, update action and system clipboard copy/paste passed')
+        for mode, message in [('new', '发现新版本 v99.0.0'), ('empty', '暂未找到可用版本'), ('failure', '无法连接更新服务，请检查网络后重试')]:
+            fixture('about', mode='light', palette='mist', update=mode); click('检查更新'); check(message)
+            check('下载更新', mode == 'new')
+        fixture('about', mode='light', palette='mist'); check('暂未设置')
+        fixture('about', mode='dark', palette='iris'); check('别等断电，才想起充电费。'); snapshot('about-dark')
+        fixture('about', mode='light', palette='wallpaper'); snapshot('about-wallpaper')
+        results.append('Update success/new/empty/failure and empty feedback states remain usable; light, dark and system dynamic palettes render')
+        adb('shell', 'wm', 'size', '640x1120'); adb('shell', 'wm', 'density', '320')
+        adb('shell', 'settings', 'put', 'system', 'font_scale', '1.6')
+        fixture('about', mode='light', palette='mist', feedback='123456789', update='current')
+        header('关于電'); snapshot('about-320dp-large-font-top')
+        reveal('检查更新'); click('检查更新'); reveal('已是最新版本')
+        reveal('QQ 反馈群'); reveal('123456789'); snapshot('about-320dp-large-font-bottom')
+        adb('shell', 'settings', 'put', 'system', 'font_scale', '1.0')
+        adb('shell', 'wm', 'size', '1120x640')
+        fixture('about', mode='light', palette='mist', feedback='123456789', update='current')
+        snapshot('about-landscape-top'); reveal('检查更新'); click('检查更新'); reveal('已是最新版本')
+        reveal('QQ 反馈群'); snapshot('about-landscape-bottom')
+        back(); header('设置')
+        results.append('320dp width at 160 percent font and landscape keep update and feedback controls reachable through one scroll area; back returns to settings')
+        (out / 'brand-verification.json').write_text(json.dumps({'status': 'passed', 'checks': results, 'data': 'isolated emulator fixtures only; no production account or mutations'}, ensure_ascii=False, indent=2), encoding='utf-8')
+        print(json.dumps(results, ensure_ascii=True, indent=2), flush=True)
+        raise SystemExit(0)
     if args.focus == 'import-update':
         fixture('navigation', delay=450)
         check('我的宿舍'); snapshot('glass-home')
@@ -145,7 +229,7 @@ try:
         click('设置'); check('低电量提醒'); click('宿舍'); check('我的宿舍')
         results.append('Docked navigation renders to the screen bottom and its items remain usable')
         fixture('about', feedback='123456789')
-        check('QQ 反馈群'); check('123456789'); click('复制群号'); snapshot('feedback-copy')
+        check('QQ 反馈群'); check('123456789'); click('复制群号'); check('已复制'); snapshot('feedback-copy')
         fixture('login'); click('用户名'); adb('shell', 'input', 'keyevent', '279'); check('123456789')
         snapshot('feedback-paste-verification')
         fixture('about'); check('QQ 反馈群'); check('暂未设置'); snapshot('feedback-empty')
@@ -210,7 +294,7 @@ try:
     (out / 'device-verification.json').write_text(json.dumps({'status': 'passed', 'checks': results, 'data': 'isolated local fixtures; no production account or data mutations'}, ensure_ascii=False, indent=2), encoding='utf-8')
     print(json.dumps(results, ensure_ascii=True, indent=2))
 finally:
-    if args.focus == 'import-update': adb('shell', 'settings', 'put', 'system', 'font_scale', '1.0')
+    if args.focus in ('import-update', 'brand'): adb('shell', 'settings', 'put', 'system', 'font_scale', '1.0')
     adb('shell', 'wm', 'size', 'reset'); adb('shell', 'wm', 'density', 'reset')
     adb('shell', 'am', 'force-stop', package)
     for proc in processes:

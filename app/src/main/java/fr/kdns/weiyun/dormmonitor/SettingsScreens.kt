@@ -9,13 +9,18 @@ import android.net.Uri
 import android.os.Build
 import android.provider.Settings
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.background
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.LineBreak
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.material.icons.Icons
@@ -23,6 +28,7 @@ import androidx.compose.material.icons.outlined.*
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
+import kotlinx.coroutines.launch
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -36,42 +42,59 @@ internal fun AboutScreen(vm: MonitorModel) {
     LaunchedEffect(vm) { vm.loadFeedbackConfig() }
     val state = vm.updateState
     var openError by remember { mutableStateOf("") }
-    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(18.dp)) {
-        AppCard {
-            Text("版本 ${BuildConfig.VERSION_NAME}", Modifier.padding(20.dp), style = MaterialTheme.typography.titleMedium)
-            AppButton(if (state.checking) "正在检查…" else "检查更新", { openError = ""; vm.checkForUpdates() }, Modifier.fillMaxWidth(),
-                enabled = !state.checking, primary = true, icon = Icons.Outlined.SystemUpdate)
-            if (state.message.isNotEmpty()) Text(state.message, style = MaterialTheme.typography.bodyMedium)
-            state.release?.let { release ->
-                AppButton(if (release.apk != null) "下载更新" else "查看新版本", {
-                    openError = if (runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(release.apk ?: release.page))) }.isSuccess) "" else "无法打开下载页面，请安装或启用浏览器后重试"
-                }, Modifier.fillMaxWidth(), icon = Icons.Outlined.Download)
-            }
-            if (openError.isNotEmpty()) Text(openError, color = MaterialTheme.colorScheme.error)
-        }
-        AppCard(onClick = if (vm.qqGroup.isNotEmpty()) ({
-            val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
-            clipboard.setPrimaryClip(android.content.ClipData.newPlainText("QQ 反馈群", vm.qqGroup))
-            if (Build.VERSION.SDK_INT < 33) android.widget.Toast.makeText(context, "群号已复制", android.widget.Toast.LENGTH_SHORT).show()
-        }) else null) {
-            Row(Modifier.fillMaxWidth(), verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
-                IconTile(Icons.Outlined.Forum, 48)
-                Column(Modifier.weight(1f).padding(horizontal = 14.dp), verticalArrangement = Arrangement.spacedBy(5.dp)) {
-                    Text("QQ 反馈群", style = MaterialTheme.typography.titleMedium)
-                    Text(when {
-                        vm.qqGroup.isNotEmpty() -> vm.qqGroup
-                        vm.feedbackLoading -> "正在读取…"
-                        vm.feedbackError.isNotEmpty() -> vm.feedbackError
-                        else -> "暂未设置"
-                    }, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodyMedium)
+    val snackbar = remember { SnackbarHostState() }
+    val scope = rememberCoroutineScope()
+    Box(Modifier.fillMaxSize()) {
+        Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(18.dp)) {
+            Column(Modifier.fillMaxWidth().padding(top = 32.dp, bottom = 14.dp), horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                Box(Modifier.size(112.dp).background(MaterialTheme.colorScheme.primaryContainer, RoundedCornerShape(36.dp)), contentAlignment = Alignment.Center) {
+                    BrandMark(Modifier.size(72.dp))
                 }
-                if (vm.qqGroup.isNotEmpty()) Icon(Icons.Outlined.ContentCopy, "复制群号", tint = MaterialTheme.colorScheme.primary)
-                else IconButton(onClick = { vm.loadFeedbackConfig(force = true) }, enabled = !vm.feedbackLoading) {
-                    Icon(Icons.Outlined.Refresh, "刷新反馈群", tint = MaterialTheme.colorScheme.primary)
+                Text(stringResource(R.string.app_name), style = MaterialTheme.typography.headlineLarge, fontWeight = FontWeight.SemiBold, textAlign = TextAlign.Center)
+                Text(stringResource(R.string.app_tagline), Modifier.fillMaxWidth(), style = MaterialTheme.typography.bodyLarge.copy(lineBreak = LineBreak.Heading),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center)
+                Text(stringResource(R.string.app_version, BuildConfig.VERSION_NAME), style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center)
+            }
+            AppCard {
+                AppButton(if (state.checking) "正在检查…" else "检查更新", { openError = ""; vm.checkForUpdates() }, Modifier.fillMaxWidth(),
+                    enabled = !state.checking, primary = true, icon = Icons.Outlined.SystemUpdate)
+                if (state.message.isNotEmpty()) Text(state.message, style = MaterialTheme.typography.bodyMedium)
+                state.release?.let { release ->
+                    AppButton(if (release.apk != null) "下载更新" else "查看新版本", {
+                        openError = if (runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(release.apk ?: release.page))) }.isSuccess) "" else "无法打开下载页面，请安装或启用浏览器后重试"
+                    }, Modifier.fillMaxWidth(), icon = Icons.Outlined.Download)
+                }
+                if (openError.isNotEmpty()) Text(openError, color = MaterialTheme.colorScheme.error)
+            }
+            AppCard(onClick = if (vm.qqGroup.isNotEmpty()) ({
+                val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+                clipboard.setPrimaryClip(android.content.ClipData.newPlainText("QQ 反馈群", vm.qqGroup))
+                scope.launch { snackbar.currentSnackbarData?.dismiss(); snackbar.showSnackbar("已复制") }
+            }) else null) {
+                Row(Modifier.fillMaxWidth(), verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+                    IconTile(Icons.Outlined.Forum, 48)
+                    Column(Modifier.weight(1f).padding(horizontal = 14.dp), verticalArrangement = Arrangement.spacedBy(5.dp)) {
+                        Text("QQ 反馈群", style = MaterialTheme.typography.titleMedium)
+                        Text(when {
+                            vm.qqGroup.isNotEmpty() -> vm.qqGroup
+                            vm.feedbackLoading -> "正在读取…"
+                            vm.feedbackError.isNotEmpty() -> vm.feedbackError
+                            else -> "暂未设置"
+                        }, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodyMedium)
+                    }
+                    if (vm.qqGroup.isNotEmpty()) Icon(Icons.Outlined.ContentCopy, "复制群号", tint = MaterialTheme.colorScheme.primary)
+                    else IconButton(onClick = { vm.loadFeedbackConfig(force = true) }, enabled = !vm.feedbackLoading) {
+                        Icon(Icons.Outlined.Refresh, "刷新反馈群", tint = MaterialTheme.colorScheme.primary)
+                    }
                 }
             }
+            Spacer(Modifier.height(24.dp))
         }
-        Spacer(Modifier.height(24.dp))
+        SnackbarHost(snackbar, Modifier.align(Alignment.BottomCenter).padding(16.dp)) { data ->
+            Snackbar { Text(data.visuals.message, Modifier.fillMaxWidth(), textAlign = TextAlign.Center) }
+        }
     }
 }
 
@@ -94,7 +117,7 @@ fun WidgetSettings(onBack: () -> Unit, dorms: List<JSONObject> = emptyList(), sh
     val choosingWidget = remember { mutableStateOf(false) }
     fun configure(id: Int) { context.startActivity(Intent(context, DormWidgetConfigActivity::class.java).putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, id)) }
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-        if (showBack) TextButton(onClick = onBack) { Text("‹  返回") }
+        if (showBack) IconButton(onClick = onBack) { Icon(Icons.Outlined.ArrowBack, "返回") }
         IconTile(Icons.Outlined.Widgets, 72)
         AppButton("更换宿舍", onClick = { if (widgetIds.size == 1) configure(widgetIds.single()) else choosingWidget.value = true }, enabled = widgetIds.isNotEmpty(), modifier = Modifier.fillMaxWidth(), primary = true, icon = Icons.Outlined.SwapHoriz)
         if (widgetIds.isEmpty()) Text("尚未添加桌面小组件", color = MaterialTheme.colorScheme.onSurfaceVariant)
