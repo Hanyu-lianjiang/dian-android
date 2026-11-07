@@ -30,4 +30,16 @@ class AppUpdatesTest {
             root + "download/v3/%2e%2e/outside.apk", "https://github.com@evil.test/$UPDATE_REPOSITORY/releases/download/v3/app.apk"
         ).forEach { assertFalse(it, releaseUrlAllowed(it, true)) }
     }
+
+    @Test fun internalBuildCodeDetectsSameMarketingVersionUpdate() {
+        assertTrue(releaseIsNewer(AppRelease("1.0.1", "", null, versionCode = 15), "1.0.1", 14))
+        assertFalse(releaseIsNewer(AppRelease("1.0.1", "", null, versionCode = 14), "1.0.1", 14))
+        assertTrue(releaseIsNewer(AppRelease("1.0.2", "", null), "1.0.1", 15))
+    }
+
+    @Test fun onlyAcceptsReleaseMetadataFromThisRepository() {
+        assertTrue(releaseMetadataUrlAllowed("https://github.com/$UPDATE_REPOSITORY/releases/download/v1.0.1/update.json"))
+        assertFalse(releaseMetadataUrlAllowed("https://github.com/other/repo/releases/download/v1.0.1/update.json"))
+        assertFalse(releaseMetadataUrlAllowed("https://github.com/$UPDATE_REPOSITORY/releases/download/v1.0.1/other.json"))
+    }
 }

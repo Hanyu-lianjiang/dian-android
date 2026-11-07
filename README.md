@@ -1,6 +1,6 @@
 # 電 Android 应用
 
-版本 `1.0.1`，版本代码 `13`。Kotlin、Jetpack Compose、MVVM、Gradle、Android Jetpack；登录、总览、导入、详情、设置和小组件配置使用官方 Miuix `0.5.1` 组件。最低 Android 8（API 26），编译和目标 SDK 35。
+版本 `1.0.1`，版本代码 `15`。Kotlin、Jetpack Compose、MVVM、Gradle、Android Jetpack；登录、总览、导入、详情、设置和小组件配置使用官方 Miuix `0.5.1` 组件。最低 Android 8（API 26），编译和目标 SDK 35。
 
 ## 使用
 
@@ -72,6 +72,6 @@ python ./verify-device.py --adb <ADB路径> --serial <模拟器序列号> --outp
 
 ## 更新发布
 
-“关于 → 检查更新”手动查询公开仓库 `Hanyu-lianjiang/dian-android` 的最新正式 GitHub Release。版本标签采用 `v1.0.1` 格式；忽略草稿和预发布。上传同一正式签名的 `dian-<版本>.apk` 后，客户端显示下载入口，通过系统浏览器下载并由用户确认安装。尚无正式发布或发布源不可访问时，显示“暂未找到可用版本”，不会据此判断已经是最新版。
+应用启动时自动查询公开仓库 `Hanyu-lianjiang/dian-android` 的最新正式 GitHub Release；关于页也可手动检查。发现较新版本后显示提示，APK 在应用内下载，校验 SHA-256、应用包名、签名及内部版本码后调用 Android 系统安装器。首次安装更新时，系统可能要求允许此应用安装未知来源应用，最终安装仍须由用户确认。发布包附带 `update.json`，用于支持版本名不变时的内部版本码升级。
 
 GitHub 仓库和 Releases 只用于客户端分发；学校授权与个人数据由现有服务端管理。签名文件及访问凭据不进入公开仓库。

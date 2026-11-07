@@ -13,6 +13,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
 import java.net.URLEncoder
+import java.io.File
 
 private fun org.json.JSONArray.objects() = (0 until length()).mapNotNull { optJSONObject(it) }
 private fun historyRows(dorm: JSONObject) = dorm.optJSONArray("history")?.objects().orEmpty()
@@ -42,6 +43,7 @@ class MonitorModel @JvmOverloads constructor(app: Application, private val repos
     var thresholdLoading by mutableStateOf(false); private set
     var thresholdError by mutableStateOf(""); private set
     internal var updateState by mutableStateOf(UpdateState()); private set
+    private var waitingForInstallPermission = false
     var qqGroup by mutableStateOf(""); private set
     var feedbackLoading by mutableStateOf(false); private set
     var feedbackError by mutableStateOf(""); private set
@@ -87,6 +89,7 @@ class MonitorModel @JvmOverloads constructor(app: Application, private val repos
     }
     private suspend fun call(path: String, method: String = "GET", body: JSONObject? = null) = repository.call(path, method, body)
     init {
+        checkForUpdates()
         if (SessionStore.get(ctx).isNotEmpty()) run {
             val session = call("/api/session"); role = session.getString("role"); username = session.optString("username"); load()
         }
@@ -248,7 +251,7 @@ class MonitorModel @JvmOverloads constructor(app: Application, private val repos
                 val release = updates.latest()
                 when {
                     release == null -> UpdateState(message = "暂未找到可用版本")
-                    compareAppVersions(release.version, BuildConfig.VERSION_NAME)?.let { it > 0 } == true ->
+                    releaseIsNewer(release, BuildConfig.VERSION_NAME, BuildConfig.VERSION_CODE.toLong()) ->
                         UpdateState(message = "发现新版本 ${release.version}", release = release)
                     else -> UpdateState(message = "已是最新版本")
                 }
@@ -257,6 +260,44 @@ class MonitorModel @JvmOverloads constructor(app: Application, private val repos
                 UpdateState(message = if (e is IllegalStateException) e.message ?: "暂时无法检查更新，请稍后重试" else "无法连接更新服务，请检查网络后重试")
             }
         }
+    }
+    fun downloadUpdate() {
+        val release = updateState.release ?: return
+        val url = release.apk
+        if (url == null) { updateState = updateState.copy(message = "该版本暂未提供安装包"); return }
+        if (updateState.downloading) return
+        updateState = updateState.copy(downloading = true, downloadProgress = 0, downloadedFile = null, message = "正在下载更新…")
+        viewModelScope.launch {
+            try {
+                val file = downloadReleaseApk(url, release.sha256, ctx) { progress ->
+                    updateState = updateState.copy(downloadProgress = progress)
+                }
+                updateState = updateState.copy(downloading = false, downloadProgress = 100, downloadedFile = file.absolutePath, message = "下载完成，安装包已通过校验")
+            } catch (e: CancellationException) { throw e }
+            catch (e: Exception) {
+                updateState = updateState.copy(downloading = false, message = e.message ?: "下载失败，请稍后重试")
+            }
+        }
+    }
+    fun installDownloadedUpdate() {
+        val path = updateState.downloadedFile ?: return
+        if (android.os.Build.VERSION.SDK_INT >= 26 && !ctx.packageManager.canRequestPackageInstalls()) {
+            waitingForInstallPermission = true
+            runCatching {
+                ctx.startActivity(Intent(android.provider.Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES,
+                    android.net.Uri.parse("package:${ctx.packageName}")).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+            }.onFailure { updateState = updateState.copy(message = "请在系统设置中允许安装此应用下载的更新") }
+            return
+        }
+        waitingForInstallPermission = false
+        runCatching { ctx.startActivity(verifiedInstallIntent(ctx, File(path))) }
+            .onFailure { updateState = updateState.copy(message = it.message ?: "无法启动系统安装器") }
+    }
+    fun continueInstallAfterPermission() {
+        if (!waitingForInstallPermission) return
+        waitingForInstallPermission = false
+        if (android.os.Build.VERSION.SDK_INT >= 26 && ctx.packageManager.canRequestPackageInstalls()) installDownloadedUpdate()
+        else updateState = updateState.copy(message = "未允许安装未知应用；可稍后返回此页面重试")
     }
     fun saveThreshold() = run { call("/api/preferences", "PUT", JSONObject().put("lowThreshold", threshold.toDouble())); preferencesLoadedAt = SystemClock.elapsedRealtime(); ctx.sendBroadcast(Intent(ctx, DormWidgetProvider::class.java).setAction(DormWidgetProvider.ACTION_REFRESH)); page = "home"; load() }
     fun updateGlobalAuth(json: String, onSaved: () -> Unit) = run {

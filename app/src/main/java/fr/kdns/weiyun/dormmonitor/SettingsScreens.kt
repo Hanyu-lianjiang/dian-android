@@ -41,7 +41,6 @@ internal fun AboutScreen(vm: MonitorModel) {
     val context = LocalContext.current
     LaunchedEffect(vm) { vm.loadFeedbackConfig() }
     val state = vm.updateState
-    var openError by remember { mutableStateOf("") }
     val snackbar = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
     Box(Modifier.fillMaxSize()) {
@@ -58,15 +57,18 @@ internal fun AboutScreen(vm: MonitorModel) {
                     color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center)
             }
             AppCard {
-                AppButton(if (state.checking) "正在检查…" else "检查更新", { openError = ""; vm.checkForUpdates() }, Modifier.fillMaxWidth(),
-                    enabled = !state.checking, primary = true, icon = Icons.Outlined.SystemUpdate)
+                AppButton(if (state.checking) "正在检查…" else "检查更新", { vm.checkForUpdates() }, Modifier.fillMaxWidth(),
+                    enabled = !state.checking && !state.downloading, primary = true, icon = Icons.Outlined.SystemUpdate)
                 if (state.message.isNotEmpty()) Text(state.message, style = MaterialTheme.typography.bodyMedium)
                 state.release?.let { release ->
-                    AppButton(if (release.apk != null) "下载更新" else "查看新版本", {
-                        openError = if (runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(release.apk ?: release.page))) }.isSuccess) "" else "无法打开下载页面，请安装或启用浏览器后重试"
-                    }, Modifier.fillMaxWidth(), icon = Icons.Outlined.Download)
+                    when {
+                        state.downloading -> LinearProgressIndicator(progress = { state.downloadProgress / 100f }, Modifier.fillMaxWidth())
+                        state.downloadedFile != null -> AppButton("安装更新", { vm.installDownloadedUpdate() }, Modifier.fillMaxWidth(),
+                            primary = true, icon = Icons.Outlined.InstallMobile)
+                        else -> AppButton("下载并安装", { vm.downloadUpdate() }, Modifier.fillMaxWidth(),
+                            enabled = release.apk != null, icon = Icons.Outlined.Download)
+                    }
                 }
-                if (openError.isNotEmpty()) Text(openError, color = MaterialTheme.colorScheme.error)
             }
             AppCard(onClick = if (vm.qqGroup.isNotEmpty()) ({
                 val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
