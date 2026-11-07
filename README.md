@@ -1,6 +1,6 @@
 # 電 Android 应用
 
-版本 `1.0.1`，版本代码 `16`。Kotlin、Jetpack Compose、MVVM、Gradle、Android Jetpack；登录、总览、导入、详情、设置和小组件配置使用官方 Miuix `0.5.1` 组件。最低 Android 8（API 26），编译和目标 SDK 35。
+版本 `1.0.1`，版本代码 `17`。Kotlin、Jetpack Compose、MVVM、Gradle、Android Jetpack；登录、总览、导入、详情、设置和小组件配置使用官方 Miuix `0.5.1` 组件。最低 Android 8（API 26），编译和目标 SDK 35。
 
 ## 使用
 
